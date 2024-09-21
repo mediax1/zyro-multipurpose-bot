@@ -1,0 +1,9 @@
+{
+    "prefix": "!",
+    "users": {
+      "admin": ["1229346799798452235", "ADMIN_USER_ID_2"],
+      "dev": ["DEV_USER_ID_1", "DEV_USER_ID_2"]
+    },
+    "logging": true,
+    "modLogsChannelId": "1257234174788632638"
+  }  
