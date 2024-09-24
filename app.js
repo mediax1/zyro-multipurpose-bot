@@ -1,5 +1,6 @@
 require("dotenv").config();
 const fs = require("fs");
+const { checkReminders } = require("./utils/checkReminder");
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
 const config = require("./config.json");
 
@@ -28,6 +29,7 @@ for (const folder of commandFolders) {
 
 client.once("ready", () => {
   console.log("Bot is online!");
+  checkReminders(client);
 });
 
 client.on("messageCreate", (message) => {
