@@ -15,63 +15,91 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Load commands from the /commands directory
 const commandFolders = fs.readdirSync("./commands");
 for (const folder of commandFolders) {
   const commandFiles = fs
     .readdirSync(`./commands/${folder}`)
     .filter((file) => file.endsWith(".js"));
+
   for (const file of commandFiles) {
-    const command = require(`./commands/${folder}/${file}`);
-    client.commands.set(command.name, command);
+    try {
+      const command = require(`./commands/${folder}/${file}`);
+      if (command.name && typeof command.execute === "function") {
+        client.commands.set(command.name, command);
+        console.log(`Loaded command: ${command.name}`);
+      } else {
+        console.warn(`Skipping invalid command file: ${folder}/${file}`);
+      }
+    } catch (error) {
+      console.error(
+        `Failed to load command: ${file} from folder: ${folder}`,
+        error
+      );
+    }
   }
 }
 
 client.once("ready", () => {
-  console.log("Bot is online!");
+  console.log(`${client.user.tag} is online!`);
   checkReminders(client);
 });
 
-client.on("messageCreate", (message) => {
+client.on("messageCreate", async (message) => {
   if (!message.content.startsWith(config.prefix) || message.author.bot) return;
 
   const args = message.content.slice(config.prefix.length).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
 
-  const command = client.commands.get(commandName);
+  const command =
+    client.commands.get(commandName) ||
+    client.commands.find(
+      (cmd) => cmd.aliases && cmd.aliases.includes(commandName)
+    );
 
-  if (!command) return;
+  if (!command) {
+    return message
+      .reply(`Unknown command: \`${commandName}\``)
+      .then((msg) => {
+        setTimeout(() => msg.delete().catch(console.error), 5000);
+      })
+      .catch(console.error);
+  }
 
-  // User ID-based command restrictions
   if (command.role) {
-    const userHasAccess = config.users[command.role].includes(
+    const userHasAccess = config.users[command.role]?.includes(
       message.author.id
     );
 
     if (!userHasAccess) {
-      // Send the permission error message
       return message
         .reply(
           `You do not have permission to use the \`${commandName}\` command.`
         )
         .then((msg) => {
-          // Set a 5-second timeout to delete the message
-          setTimeout(() => {
-            msg
-              .delete()
-              .catch((err) => console.error("Failed to delete message:", err));
-          }, 5000); // 5000 milliseconds = 5 seconds
+          setTimeout(() => msg.delete().catch(console.error), 5000);
         })
-        .catch((err) => console.error("Failed to send message:", err));
+        .catch(console.error);
     }
   }
-
   try {
-    command.execute(message, args);
+    await command.execute(message, args);
   } catch (error) {
-    console.error(error);
-    message.reply("There was an error executing that command!");
+    console.error(`Error executing command: ${commandName}`, error);
+    message
+      .reply("There was an error executing that command!")
+      .catch(console.error);
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.on("error", (error) => {
+  console.error("Discord client error:", error);
+});
+
+client
+  .login(process.env.DISCORD_TOKEN)
+  .then(() => {
+    console.log("Logged in successfully");
+  })
+  .catch((error) => {
+    console.error("Failed to log in:", error);
+  });

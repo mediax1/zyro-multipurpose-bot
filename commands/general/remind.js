@@ -5,6 +5,7 @@ module.exports = {
   name: "remind",
   description: "Set a reminder for a specified time (e.g., 10m, 1h, 1d).",
   role: null,
+  aliases: ["rm"],
   async execute(message, args) {
     if (!args[0] || !args[1]) {
       return message.reply(
